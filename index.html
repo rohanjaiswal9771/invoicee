@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bireena Infotech - Invoice ERP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+
+        .no-print-scroll {
+            scrollbar-width: none;
+        }
+        .no-print-scroll::-webkit-scrollbar {
+            display: none;
+        }
+
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            body { background: white !important; margin: 0; padding: 0; }
+            .invoice-container { 
+                box-shadow: none !important; 
+                border: none !important; 
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 40px !important;
+            }
+        }
+
+        .custom-shadow {
+            box-shadow: 0 20px 25px -5px rgba(59, 130, 246, 0.1), 0 10px 10px -5px rgba(59, 130, 246, 0.04);
+        }
+
+        .stat-card {
+            transition: transform 0.2s ease;
+        }
+        .stat-card:hover {
+            transform: translateY(-4px);
+        }
+
+        /* Clock Animation */
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        .animate-pulse-dot {
+            animation: pulse-dot 1s infinite;
+        }
+    </style>
+</head>
+<body class="text-slate-900">
+
+    <div class="min-h-screen flex flex-col md:flex-row">
+        <!-- Sidebar -->
+        <aside class="w-full md:w-64 bg-white border-r p-6 flex flex-col gap-8 h-screen sticky top-0 no-print">
+            <div class="flex items-center gap-2">
+                <div class="w-10 h-10 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-black italic shadow-lg">B</div>
+                <h1 class="text-xl font-black text-blue-900 uppercase tracking-tighter">Bireena</h1>
+            </div>
+
+            <!-- Digital Clock & Calendar Widget -->
+            <div class="bg-slate-900 rounded-3xl p-5 text-white shadow-xl shadow-blue-900/10">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="p-2 bg-blue-600/20 rounded-lg">
+                        <i class="fa-solid fa-clock text-blue-400 text-sm"></i>
+                    </div>
+                    <div>
+                        <div id="digital-clock" class="text-xl font-black tracking-widest tabular-nums leading-none">00:00:00</div>
+                        <div class="text-[8px] font-black uppercase text-blue-400 tracking-[0.2em] mt-1">Live Time</div>
+                    </div>
+                </div>
+                <div class="pt-3 border-t border-slate-800 flex items-center gap-3">
+                    <div class="p-2 bg-emerald-600/20 rounded-lg">
+                        <i class="fa-solid fa-calendar-day text-emerald-400 text-sm"></i>
+                    </div>
+                    <div>
+                        <div id="calendar-date" class="text-[11px] font-black uppercase tracking-tight">Loading Date...</div>
+                        <div id="calendar-day" class="text-[9px] font-bold text-slate-500 uppercase">Tuesday</div>
+                    </div>
+                </div>
+            </div>
+            
+            <nav class="flex flex-col gap-2 flex-1">
+                <button onclick="switchTab('dashboard')" id="btn-dashboard" class="nav-btn flex items-center gap-3 px-5 py-3.5 rounded-2xl text-[11px] uppercase font-black tracking-widest transition-all bg-blue-600 text-white shadow-xl">
+                    <i class="fa-solid fa-chart-line"></i> Dashboard
+                </button>
+                <button onclick="switchTab('history')" id="btn-history" class="nav-btn flex items-center gap-3 px-5 py-3.5 rounded-2xl text-[11px] uppercase font-black tracking-widest transition-all text-slate-400 hover:text-slate-900 hover:bg-slate-100">
+                    <i class="fa-solid fa-file-invoice"></i> History
+                </button>
+                <button onclick="switchTab('settings')" id="btn-settings" class="nav-btn flex items-center gap-3 px-5 py-3.5 rounded-2xl text-[11px] uppercase font-black tracking-widest transition-all text-slate-400 hover:text-slate-900 hover:bg-slate-100">
+                    <i class="fa-solid fa-box-archive"></i> Stock
+                </button>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-4 md:p-10 no-print">
+            <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-10">
+                <div>
+                    <h2 id="page-title" class="text-4xl font-black text-slate-900 uppercase tracking-tighter">Dashboard</h2>
+                    <p class="text-slate-400 font-bold uppercase text-[10px] tracking-widest">Financial ERP Center</p>
+                </div>
+                <button onclick="openGenerator()" class="bg-blue-600 text-white px-7 py-3.5 rounded-2xl font-black text-xs uppercase shadow-xl shadow-blue-200 hover:scale-105 transition-transform active:scale-95">
+                    <i class="fa-solid fa-plus mr-2"></i> Quick Entry
+                </button>
+            </header>
+
+            <!-- Dashboard Section -->
+            <section id="section-dashboard" class="space-y-8">
+                <!-- Top Stats -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="stat-card bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+                        <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Today's Paid</p>
+                        <h4 id="stat-today" class="text-3xl font-black text-blue-600">$0.00</h4>
+                        <p class="text-[9px] text-slate-400 mt-2">Resets every midnight</p>
+                    </div>
+                    <div class="stat-card bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+                        <p class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Monthly Revenue</p>
+                        <h4 id="stat-month" class="text-3xl font-black text-emerald-600">$0.00</h4>
+                        <p class="text-[9px] text-slate-400 mt-2">Total paid this month</p>
+                    </div>
+                    <div class="stat-card bg-blue-900 p-6 rounded-3xl shadow-sm text-white">
+                        <p class="text-[10px] font-black uppercase text-blue-300 tracking-widest mb-1">Total Invoices</p>
+                        <h4 id="stat-total-count" class="text-3xl font-black">0</h4>
+                        <p class="text-[9px] text-blue-400 mt-2">Lifetime record count</p>
+                    </div>
+                </div>
+
+                <!-- Chart Row -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="lg:col-span-2 bg-white rounded-3xl border p-6 shadow-sm">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 id="chart-title" class="font-black text-xs uppercase text-slate-400 tracking-wider">Monthly Performance</h3>
+                            <div class="flex items-center gap-2 text-[10px] font-black text-blue-600 uppercase">
+                                <span class="w-2 h-2 rounded-full bg-blue-600"></span> Paid Revenue
+                            </div>
+                        </div>
+                        <div class="h-[300px] w-full">
+                            <canvas id="performanceChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-3xl border overflow-hidden shadow-sm flex flex-col">
+                        <div class="p-6 border-b flex justify-between items-center bg-slate-50/50">
+                            <h3 class="font-black text-xs uppercase text-slate-400 tracking-wider">Recent Invoices</h3>
+                        </div>
+                        <div class="overflow-x-auto flex-1">
+                            <table class="w-full text-left">
+                                <tbody id="recent-invoices-body" class="divide-y divide-slate-50">
+                                    <!-- Rows injected by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="p-4 border-t text-center">
+                            <button onclick="switchTab('history')" class="text-[10px] font-black uppercase text-blue-600 hover:underline">View All History</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- History Section -->
+            <section id="section-history" class="hidden">
+                <div class="bg-white rounded-3xl border overflow-hidden shadow-sm">
+                    <table class="w-full text-left">
+                        <thead class="bg-slate-50 border-b">
+                            <tr>
+                                <th class="px-6 py-4 text-[10px] font-black uppercase text-slate-400">Invoice ID</th>
+                                <th class="px-6 py-4 text-[10px] font-black uppercase text-slate-400">Date</th>
+                                <th class="px-6 py-4 text-[10px] font-black uppercase text-slate-400">Client</th>
+                                <th class="px-6 py-4 text-[10px] font-black uppercase text-slate-400 text-right">Amount</th>
+                                <th class="px-6 py-4 text-[10px] font-black uppercase text-slate-400">Status</th>
+                                <th class="px-6 py-4 text-[10px] font-black uppercase text-slate-400 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table-body" class="divide-y divide-slate-50">
+                            <!-- Rows injected by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Settings Section -->
+            <section id="section-settings" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+                    <h3 class="text-lg font-black uppercase flex items-center gap-2"><i class="fa-solid fa-building text-blue-600"></i> Permanent Companies</h3>
+                    <div class="flex gap-2">
+                        <input id="input-new-company" type="text" placeholder="Add Company Name" class="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:border-blue-400 transition-colors">
+                        <button onclick="addCompany()" class="bg-blue-600 text-white p-3 rounded-xl hover:bg-blue-700"><i class="fa-solid fa-plus"></i></button>
+                    </div>
+                    <div id="company-list" class="space-y-2 max-h-[300px] overflow-y-auto no-print-scroll">
+                        <!-- Items injected by JS -->
+                    </div>
+                </div>
+                <div class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+                    <h3 class="text-lg font-black uppercase flex items-center gap-2"><i class="fa-solid fa-tags text-emerald-600"></i> Stock Services</h3>
+                    <div class="space-y-3">
+                        <input id="input-item-name" type="text" placeholder="Service/Item Name" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none">
+                        <div class="flex gap-2">
+                            <input id="input-item-rate" type="number" placeholder="Rate ($)" class="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none">
+                            <button onclick="addStockItem()" class="bg-emerald-600 text-white px-6 rounded-xl font-black text-[10px] uppercase hover:bg-emerald-700">Add Item</button>
+                        </div>
+                    </div>
+                    <div id="stock-list" class="space-y-2 max-h-[300px] overflow-y-auto no-print-scroll">
+                        <!-- Items injected by JS -->
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modals Layer -->
+    <div id="modal-overlay" class="fixed inset-0 z-[100] hidden flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+        
+        <!-- Generator Modal -->
+        <div id="modal-generator" class="hidden bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 class="text-xl font-black text-slate-800 uppercase tracking-tight">Generate Invoice</h3>
+                <button onclick="closeModals()" class="p-2 hover:bg-slate-200 rounded-full text-slate-400 transition-colors"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            
+            <div class="p-8 overflow-y-auto flex-1 space-y-6 no-print-scroll">
+                <div class="space-y-4">
+                    <label class="block text-[10px] font-black uppercase text-slate-400">Client Information</label>
+                    <div class="flex gap-2">
+                        <button onclick="setClientType('customer')" id="type-customer" class="type-btn flex-1 py-3 rounded-xl border-2 font-bold text-xs uppercase border-blue-600 bg-blue-50 text-blue-600">Customer</button>
+                        <button onclick="setClientType('company')" id="type-company" class="type-btn flex-1 py-3 rounded-xl border-2 font-bold text-xs uppercase border-slate-100 text-slate-400">Company</button>
+                    </div>
+
+                    <div id="client-input-container">
+                        <input id="gen-client-name" type="text" placeholder="Enter Name..." class="w-full px-4 py-3 rounded-xl border border-slate-200 font-bold outline-none focus:ring-2 ring-blue-100">
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center border-b pb-2">
+                        <label class="text-[10px] font-black uppercase text-slate-400">Line Items</label>
+                        <button onclick="addGeneratorRow()" class="text-blue-600 text-[10px] font-black uppercase flex items-center gap-1"><i class="fa-solid fa-plus"></i> Add Row</button>
+                    </div>
+                    <div id="generator-rows" class="space-y-3">
+                        <!-- Rows injected by JS -->
+                    </div>
+                </div>
+
+                <!-- Financial Adjustments Section (Taxes, Discounts, etc) -->
+                <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-5">
+                    <h4 class="text-[10px] font-black uppercase text-slate-500 tracking-widest flex items-center gap-2">
+                        <i class="fa-solid fa-sliders text-blue-600"></i> Adjustments & Taxes
+                    </h4>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        <div>
+                            <label class="text-[9px] font-black uppercase text-slate-400 block mb-1">Tax (%)</label>
+                            <input id="gen-tax-perc" type="number" value="0" min="0" class="w-full px-3 py-2 border rounded-lg font-bold text-xs outline-none focus:border-blue-400" oninput="updateGeneratorTotal()">
+                        </div>
+                        <div>
+                            <label class="text-[9px] font-black uppercase text-slate-400 block mb-1">Disc (%)</label>
+                            <input id="gen-disc-perc" type="number" value="0" min="0" class="w-full px-3 py-2 border rounded-lg font-bold text-xs outline-none focus:border-blue-400" oninput="updateGeneratorTotal()">
+                        </div>
+                        <div>
+                            <label class="text-[9px] font-black uppercase text-slate-400 block mb-1">Fixed Off ($)</label>
+                            <input id="gen-disc-fix" type="number" value="0" min="0" class="w-full px-3 py-2 border rounded-lg font-bold text-xs outline-none focus:border-blue-400" oninput="updateGeneratorTotal()">
+                        </div>
+                        <div class="flex items-end">
+                            <label class="flex items-center gap-2 cursor-pointer mb-2 group">
+                                <input type="checkbox" id="gen-show-gst" onchange="updateGeneratorTotal()" class="w-4 h-4 rounded accent-blue-600">
+                                <span class="text-[9px] font-black uppercase text-slate-500 group-hover:text-blue-600 transition-colors">Label as GST</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 p-6 rounded-2xl text-white">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs font-bold text-slate-400 uppercase">Estimated Total</span>
+                        <span id="gen-total-preview" class="text-3xl font-black">$0.00</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-[9px] font-black uppercase text-slate-500 tracking-widest">Pre-adjustment: <span id="gen-subtotal-display" class="text-slate-400">$0.00</span></span>
+                        <span id="gen-deduct-display" class="text-[9px] font-black uppercase text-rose-400 tracking-widest"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-6 bg-slate-50 border-t flex gap-3">
+                <button onclick="closeModals()" class="flex-1 py-3 font-bold text-slate-400 uppercase text-[10px]">Discard</button>
+                <button onclick="createInvoice()" class="flex-[2] bg-blue-600 text-white py-4 rounded-xl font-black uppercase text-[10px] shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all">Generate & View</button>
+            </div>
+        </div>
+
+        <!-- Preview Modal -->
+        <div id="modal-preview" class="hidden bg-white w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="p-4 bg-slate-100 border-b flex justify-between items-center no-print">
+                <div class="flex gap-2">
+                    <button onclick="window.print()" class="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase shadow-lg shadow-blue-200">
+                        <i class="fa-solid fa-print"></i> Print / Save PDF
+                    </button>
+                    <button onclick="exportInvoiceExcel()" class="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase shadow-lg shadow-emerald-200">
+                        <i class="fa-solid fa-file-excel"></i> Export CSV
+                    </button>
+                </div>
+                <button onclick="closeModals()" class="p-2 text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+
+            <div id="printable-content" class="p-12 bg-white overflow-y-auto invoice-container">
+                <!-- Template populated by JS -->
+            </div>
+        </div>
+
+        <!-- Email Modal -->
+        <div id="modal-email" class="hidden bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden flex flex-col">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-blue-600 text-white">
+                <h3 class="text-lg font-black uppercase tracking-tight">Send Invoice Email</h3>
+                <button onclick="closeModals()" class="p-2 hover:bg-blue-700 rounded-full transition-colors"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="text-[10px] font-black uppercase text-slate-400 block mb-1">To Email</label>
+                    <input id="email-to" type="email" placeholder="client@example.com" class="w-full px-4 py-3 rounded-xl border border-slate-200 font-bold outline-none focus:ring-2 ring-blue-100">
+                </div>
+                <div>
+                    <label class="text-[10px] font-black uppercase text-slate-400 block mb-1">Subject</label>
+                    <input id="email-subject" type="text" class="w-full px-4 py-3 rounded-xl border border-slate-200 font-bold outline-none bg-slate-50" readonly>
+                </div>
+                <div>
+                    <label class="text-[10px] font-black uppercase text-slate-400 block mb-1">Message Preview</label>
+                    <textarea id="email-body" rows="4" class="w-full px-4 py-3 rounded-xl border border-slate-200 font-bold text-xs outline-none bg-slate-50 resize-none" readonly></textarea>
+                </div>
+                <p class="text-[9px] text-slate-400 italic">This will open your device's default email client with a pre-filled invoice message.</p>
+            </div>
+            <div class="p-6 border-t bg-slate-50 flex gap-3">
+                <button onclick="closeModals()" class="flex-1 py-3 font-bold text-slate-400 uppercase text-[10px]">Cancel</button>
+                <button onclick="confirmSendEmail()" class="flex-[2] bg-blue-600 text-white py-3 rounded-xl font-black uppercase text-[10px] shadow-lg shadow-blue-200 hover:bg-blue-700">Open Mail Client</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- State Management ---
+        let currentTab = 'dashboard';
+        let clientType = 'customer';
+        let invoices = JSON.parse(localStorage.getItem('bireena_invoices')) || [];
+        let companies = JSON.parse(localStorage.getItem('bireena_companies')) || ['Acme Corp', 'Global Tech', 'Starlight Inc'];
+        let stockItems = JSON.parse(localStorage.getItem('bireena_stock')) || [
+            { name: 'Web Development', rate: 1500 },
+            { name: 'UI/UX Design', rate: 800 }
+        ];
+
+        let activeInvoiceForPreview = null;
+        let activeInvoiceForEmail = null;
+        let performanceChart = null;
+
+        // --- Digital Clock Logic ---
+        function updateClock() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            
+            const clockEl = document.getElementById('digital-clock');
+            if (clockEl) clockEl.innerText = `${hours}:${minutes}:${seconds}`;
+            
+            const options = { day: 'numeric', month: 'long', year: 'numeric' };
+            const dayOptions = { weekday: 'long' };
+            
+            const dateEl = document.getElementById('calendar-date');
+            const dayEl = document.getElementById('calendar-day');
+            if (dateEl) dateEl.innerText = now.toLocaleDateString('en-US', options);
+            if (dayEl) dayEl.innerText = now.toLocaleDateString('en-US', dayOptions);
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // --- Core Functions ---
+
+        function switchTab(tabId) {
+            currentTab = tabId;
+            document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
+            document.getElementById(`section-${tabId}`).classList.remove('hidden');
+            
+            document.querySelectorAll('.nav-btn').forEach(b => {
+                b.classList.remove('bg-blue-600', 'text-white', 'shadow-xl');
+                b.classList.add('text-slate-400', 'hover:text-slate-900', 'hover:bg-slate-100');
+            });
+            const activeBtn = document.getElementById(`btn-${tabId}`);
+            activeBtn.classList.remove('text-slate-400', 'hover:text-slate-900', 'hover:bg-slate-100');
+            activeBtn.classList.add('bg-blue-600', 'text-white', 'shadow-xl');
+
+            document.getElementById('page-title').innerText = tabId.charAt(0).toUpperCase() + tabId.slice(1);
+            render();
+        }
+
+        function render() {
+            localStorage.setItem('bireena_invoices', JSON.stringify(invoices));
+            localStorage.setItem('bireena_companies', JSON.stringify(companies));
+            localStorage.setItem('bireena_stock', JSON.stringify(stockItems));
+
+            if (currentTab === 'dashboard') renderDashboard();
+            if (currentTab === 'history') renderHistory();
+            if (currentTab === 'settings') renderSettings();
+        }
+
+        function renderDashboard() {
+            const today = new Date().toISOString().split('T')[0];
+            const currentMonth = new Date().getMonth();
+            const currentYear = new Date().getFullYear();
+
+            const todayPaid = invoices
+                .filter(i => i.date === today && i.status === 'paid')
+                .reduce((sum, i) => sum + i.amount, 0);
+
+            const monthPaid = invoices
+                .filter(i => {
+                    const d = new Date(i.date);
+                    return d.getMonth() === currentMonth && d.getFullYear() === currentYear && i.status === 'paid';
+                })
+                .reduce((sum, i) => sum + i.amount, 0);
+
+            document.getElementById('stat-today').innerText = `$${todayPaid.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+            document.getElementById('stat-month').innerText = `$${monthPaid.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+            document.getElementById('stat-total-count').innerText = invoices.length;
+
+            const body = document.getElementById('recent-invoices-body');
+            body.innerHTML = invoices.slice(0, 5).map(inv => `
+                <tr class="hover:bg-slate-50/50">
+                    <td class="px-4 py-4"><span class="font-bold text-xs text-slate-900 block truncate w-32">${inv.client}</span></td>
+                    <td class="px-4 py-4 font-black text-slate-700 text-xs">$${inv.amount.toLocaleString()}</td>
+                    <td class="px-4 py-4 text-right"><button onclick="viewInvoice('${inv.id}')" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"><i class="fa-solid fa-eye"></i></button></td>
+                </tr>
+            `).join('');
+
+            updateChart();
+        }
+
+        function updateChart() {
+            const canvas = document.getElementById('performanceChart');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const now = new Date();
+            const currentMonth = now.getMonth();
+            const currentYear = now.getFullYear();
+            
+            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+            const monthName = now.toLocaleString('default', { month: 'long' });
+            
+            document.getElementById('chart-title').innerText = `${monthName} ${currentYear} Performance`;
+            
+            const labels = [];
+            const data = [];
+            
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateObj = new Date(currentYear, currentMonth, day);
+                const dateStr = dateObj.toISOString().split('T')[0];
+                labels.push(`${day}`);
+                const dayTotal = invoices
+                    .filter(inv => inv.date === dateStr && inv.status === 'paid')
+                    .reduce((sum, inv) => sum + inv.amount, 0);
+                data.push(dayTotal);
+            }
+
+            if (performanceChart) performanceChart.destroy();
+
+            performanceChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Daily Revenue',
+                        data: data,
+                        borderColor: '#2563eb',
+                        backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        borderWidth: 3,
+                        pointRadius: 2,
+                        pointHoverRadius: 6,
+                        pointBackgroundColor: '#2563eb'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            padding: 12,
+                            titleFont: { size: 10, weight: 'bold' },
+                            bodyFont: { size: 12, weight: '900' },
+                            callbacks: {
+                                title: (items) => `Day ${items[0].label}`,
+                                label: (context) => `$${context.parsed.y.toLocaleString()}`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: '#f1f5f9' },
+                            ticks: { 
+                                font: { size: 9, weight: 'bold' }, 
+                                color: '#94a3b8',
+                                callback: value => '$' + value.toLocaleString()
+                            }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { 
+                                font: { size: 8, weight: 'bold' }, 
+                                color: '#94a3b8',
+                                autoSkip: true,
+                                maxTicksLimit: 15
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderHistory() {
+            const body = document.getElementById('history-table-body');
+            body.innerHTML = invoices.map(inv => `
+                <tr class="hover:bg-slate-50/50">
+                    <td class="px-6 py-4 font-black text-blue-600 text-xs">${inv.id}</td>
+                    <td class="px-6 py-4 font-bold text-slate-400 text-[10px] uppercase">${inv.date}</td>
+                    <td class="px-6 py-4 font-bold text-slate-700">${inv.client}</td>
+                    <td class="px-6 py-4 font-black text-slate-700 text-right">$${inv.amount.toLocaleString()}</td>
+                    <td class="px-6 py-4">
+                        <button onclick="toggleStatus('${inv.id}')" class="px-4 py-2 rounded-xl text-[10px] font-black uppercase ${inv.status === 'paid' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-amber-50 text-amber-600 border border-amber-100'}">
+                            ${inv.status}
+                        </button>
+                    </td>
+                    <td class="px-6 py-4 text-right flex justify-end gap-2">
+                        <button onclick="openEmailModal('${inv.id}')" title="Email Invoice" class="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg"><i class="fa-solid fa-envelope"></i></button>
+                        <button onclick="viewInvoice('${inv.id}')" class="p-2 text-blue-500 hover:bg-blue-50 rounded-lg"><i class="fa-solid fa-print"></i></button>
+                        <button onclick="deleteInvoice('${inv.id}')" class="p-2 text-slate-300 hover:text-rose-600"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function renderSettings() {
+            document.getElementById('company-list').innerHTML = companies.map(c => `
+                <div class="flex justify-between p-3 bg-slate-50 rounded-xl group font-bold text-sm text-slate-700">
+                    ${c}
+                    <button onclick="deleteCompany('${c}')" class="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity"><i class="fa-solid fa-trash-can"></i></button>
+                </div>
+            `).join('');
+
+            document.getElementById('stock-list').innerHTML = stockItems.map(s => `
+                <div class="flex justify-between p-3 bg-slate-50 rounded-xl group">
+                    <div class="flex flex-col">
+                        <span class="font-bold text-slate-700 text-sm">${s.name}</span>
+                        <span class="text-[10px] font-black text-emerald-600 uppercase">$${s.rate.toLocaleString()} / UNIT</span>
+                    </div>
+                    <button onclick="deleteStockItem('${s.name}')" class="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity"><i class="fa-solid fa-trash-can"></i></button>
+                </div>
+            `).join('');
+        }
+
+        function openGenerator() {
+            document.getElementById('modal-overlay').classList.remove('hidden');
+            document.getElementById('modal-generator').classList.remove('hidden');
+            document.getElementById('modal-preview').classList.add('hidden');
+            document.getElementById('modal-email').classList.add('hidden');
+            
+            // Reset fields
+            document.getElementById('gen-tax-perc').value = 0;
+            document.getElementById('gen-disc-perc').value = 0;
+            document.getElementById('gen-disc-fix').value = 0;
+            document.getElementById('gen-show-gst').checked = false;
+            
+            document.getElementById('generator-rows').innerHTML = '';
+            addGeneratorRow();
+            setClientType('customer');
+            updateGeneratorTotal();
+        }
+
+        function closeModals() {
+            document.getElementById('modal-overlay').classList.add('hidden');
+            document.getElementById('modal-generator').classList.add('hidden');
+            document.getElementById('modal-preview').classList.add('hidden');
+            document.getElementById('modal-email').classList.add('hidden');
+        }
+
+        // Email Feature Functions
+        function openEmailModal(id) {
+            const inv = invoices.find(i => i.id === id);
+            if (!inv) return;
+            activeInvoiceForEmail = inv;
+
+            document.getElementById('modal-overlay').classList.remove('hidden');
+            document.getElementById('modal-email').classList.remove('hidden');
+            document.getElementById('modal-preview').classList.add('hidden');
+            document.getElementById('modal-generator').classList.add('hidden');
+
+            document.getElementById('email-subject').value = `Invoice ${inv.id} from Bireena Infotech`;
+            document.getElementById('email-body').value = `Hello ${inv.client},\n\nPlease find your invoice ${inv.id} attached/details below:\nDate: ${inv.date}\nTotal: $${inv.amount.toLocaleString()}\nStatus: ${inv.status.toUpperCase()}\n\nThank you for your business!`;
+            document.getElementById('email-to').value = "";
+            document.getElementById('email-to').focus();
+        }
+
+        function confirmSendEmail() {
+            const to = document.getElementById('email-to').value;
+            const subject = encodeURIComponent(document.getElementById('email-subject').value);
+            const body = encodeURIComponent(document.getElementById('email-body').value);
+            
+            if (!to || !to.includes('@')) {
+                alert("Please enter a valid recipient email.");
+                return;
+            }
+
+            window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
+            closeModals();
+        }
+
+        function setClientType(type) {
+            clientType = type;
+            const cInput = document.getElementById('client-input-container');
+            const btnCust = document.getElementById('type-customer');
+            const btnComp = document.getElementById('type-company');
+            if (type === 'customer') {
+                btnCust.className = "type-btn flex-1 py-3 rounded-xl border-2 font-bold text-xs uppercase border-blue-600 bg-blue-50 text-blue-600";
+                btnComp.className = "type-btn flex-1 py-3 rounded-xl border-2 font-bold text-xs uppercase border-slate-100 text-slate-400";
+                cInput.innerHTML = `<input id="gen-client-name" type="text" placeholder="Enter Customer Name" class="w-full px-4 py-3 rounded-xl border border-slate-200 font-bold outline-none focus:ring-2 ring-blue-100">`;
+            } else {
+                btnComp.className = "type-btn flex-1 py-3 rounded-xl border-2 font-bold text-xs uppercase border-blue-600 bg-blue-50 text-blue-600";
+                btnCust.className = "type-btn flex-1 py-3 rounded-xl border-2 font-bold text-xs uppercase border-slate-100 text-slate-400";
+                cInput.innerHTML = `
+                    <select id="gen-client-name" class="w-full px-4 py-3 rounded-xl border border-slate-200 font-bold outline-none focus:ring-2 ring-blue-100">
+                        ${companies.map(c => `<option value="${c}">${c}</option>`).join('')}
+                    </select>
+                `;
+            }
+        }
+
+        function addGeneratorRow() {
+            const row = document.createElement('div');
+            row.className = "generator-row flex gap-2 items-start bg-slate-50 p-3 rounded-xl border border-slate-100";
+            row.innerHTML = `
+                <div class="flex-1">
+                    <input list="stock-options" type="text" placeholder="Item/Service" class="item-desc w-full px-3 py-2 rounded-lg border text-sm font-bold" onchange="applyStock(this)">
+                </div>
+                <input type="number" placeholder="Qty" value="1" class="item-qty w-14 px-2 py-2 rounded-lg border text-sm font-bold text-center" oninput="updateGeneratorTotal()">
+                <input type="number" placeholder="Rate" value="0" class="item-rate w-20 px-2 py-2 rounded-lg border text-sm font-bold text-right" oninput="updateGeneratorTotal()">
+                <button onclick="this.parentElement.remove(); updateGeneratorTotal();" class="p-2 text-slate-300 hover:text-rose-500"><i class="fa-solid fa-trash"></i></button>
+                <datalist id="stock-options">${stockItems.map(s => `<option value="${s.name}" data-rate="${s.rate}">`).join('')}</datalist>
+            `;
+            document.getElementById('generator-rows').appendChild(row);
+        }
+
+        function applyStock(input) {
+            const option = stockItems.find(s => s.name === input.value);
+            if (option) {
+                const row = input.closest('.generator-row');
+                row.querySelector('.item-rate').value = option.rate;
+            }
+            updateGeneratorTotal();
+        }
+
+        function updateGeneratorTotal() {
+            let subtotal = 0;
+            document.querySelectorAll('.generator-row').forEach(row => {
+                const q = parseFloat(row.querySelector('.item-qty').value) || 0;
+                const r = parseFloat(row.querySelector('.item-rate').value) || 0;
+                subtotal += (q * r);
+            });
+
+            const taxP = parseFloat(document.getElementById('gen-tax-perc').value) || 0;
+            const discP = parseFloat(document.getElementById('gen-disc-perc').value) || 0;
+            const discF = parseFloat(document.getElementById('gen-disc-fix').value) || 0;
+
+            // Logic: (Subtotal - Percentage Discount - Fixed Discount) + Tax
+            const discountPercentVal = subtotal * (discP / 100);
+            const totalDiscount = discountPercentVal + discF;
+            const taxable = Math.max(0, subtotal - totalDiscount);
+            const taxVal = taxable * (taxP / 100);
+            const total = taxable + taxVal;
+
+            document.getElementById('gen-subtotal-display').innerText = `$${subtotal.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+            document.getElementById('gen-total-preview').innerText = `$${total.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+            
+            const deductEl = document.getElementById('gen-deduct-display');
+            if (totalDiscount > 0) {
+                deductEl.innerText = `Total Deductions: -$${totalDiscount.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+            } else {
+                deductEl.innerText = "";
+            }
+        }
+
+        function createInvoice() {
+            const nameEl = document.getElementById('gen-client-name');
+            const name = nameEl.value;
+            if (!name) return;
+            
+            const items = [];
+            let subtotal = 0;
+            document.querySelectorAll('.generator-row').forEach(row => {
+                const desc = row.querySelector('.item-desc').value;
+                const qty = parseFloat(row.querySelector('.item-qty').value) || 0;
+                const rate = parseFloat(row.querySelector('.item-rate').value) || 0;
+                if (desc) {
+                    items.push({ desc, qty, rate });
+                    subtotal += (qty * rate);
+                }
+            });
+            if (items.length === 0) return;
+
+            const taxP = parseFloat(document.getElementById('gen-tax-perc').value) || 0;
+            const discP = parseFloat(document.getElementById('gen-disc-perc').value) || 0;
+            const discF = parseFloat(document.getElementById('gen-disc-fix').value) || 0;
+            const useGst = document.getElementById('gen-show-gst').checked;
+
+            const discAmt = (subtotal * (discP / 100)) + discF;
+            const taxableAmount = Math.max(0, subtotal - discAmt);
+            const taxAmt = taxableAmount * (taxP / 100);
+            const finalTotal = taxableAmount + taxAmt;
+
+            const newId = `INV-${Date.now().toString().slice(-6)}`;
+            const inv = {
+                id: newId, 
+                client: name, 
+                amount: finalTotal,
+                subtotal: subtotal,
+                taxP, taxAmt,
+                discP, discF, discAmt,
+                useGst,
+                date: new Date().toISOString().split('T')[0],
+                status: 'paid', 
+                items: items
+            };
+
+            invoices.unshift(inv);
+            render();
+            viewInvoice(newId);
+        }
+
+        function viewInvoice(id) {
+            const inv = invoices.find(i => i.id === id);
+            if (!inv) return;
+            activeInvoiceForPreview = inv;
+
+            const html = `
+                <div class="flex justify-between items-start mb-12">
+                    <div>
+                        <div class="flex items-center gap-2 mb-4">
+                            <div class="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-black italic text-xl">B</div>
+                            <h1 class="text-2xl font-black tracking-tighter text-blue-900 uppercase">Bireena Infotech</h1>
+                        </div>
+                        <p class="text-xs text-slate-400 font-bold leading-relaxed uppercase">
+                            123 Business Avenue, Suite 500<br>
+                            Tech City, TC 54321<br>
+                            contact@bireena.com
+                        </p>
+                    </div>
+                    <div class="text-right">
+                        <h2 class="text-5xl font-black text-slate-100 uppercase tracking-tighter mb-2">Invoice</h2>
+                        <div class="text-sm font-black text-slate-800 uppercase">#${inv.id}</div>
+                        <div class="text-xs text-slate-400 font-bold uppercase mt-1">Date: ${inv.date}</div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-12 mb-12 border-t border-b py-8 border-slate-100">
+                    <div>
+                        <p class="text-[10px] font-black uppercase text-slate-400 mb-2">Bill To</p>
+                        <p class="text-xl font-black text-slate-800 uppercase">${inv.client}</p>
+                        <p class="text-[9px] text-slate-400 font-black uppercase mt-1">Status: ${inv.status}</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-[10px] font-black uppercase text-slate-400 mb-2">Payment Terms</p>
+                        <p class="text-xs font-bold text-slate-800">Due Upon Receipt</p>
+                    </div>
+                </div>
+                <table class="w-full mb-12">
+                    <thead>
+                        <tr class="border-b-2 border-slate-900">
+                            <th class="py-4 text-left text-[10px] font-black uppercase text-slate-400">Description</th>
+                            <th class="py-4 text-center text-[10px] font-black uppercase text-slate-400">Qty</th>
+                            <th class="py-4 text-right text-[10px] font-black uppercase text-slate-400">Rate</th>
+                            <th class="py-4 text-right text-[10px] font-black uppercase text-slate-400">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        ${inv.items.map(item => `
+                            <tr>
+                                <td class="py-5 font-bold text-slate-800">${item.desc}</td>
+                                <td class="py-5 text-center font-bold text-slate-600">${item.qty}</td>
+                                <td class="py-5 text-right font-bold text-slate-600">$${item.rate.toLocaleString()}</td>
+                                <td class="py-5 text-right font-black text-slate-900">$${(item.qty * item.rate).toLocaleString()}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+                <div class="flex justify-end">
+                    <div class="w-64 space-y-2">
+                        <div class="flex justify-between text-sm">
+                            <span class="font-bold text-slate-400 uppercase text-[10px]">Subtotal</span>
+                            <span class="font-bold text-slate-800">$${(inv.subtotal || 0).toLocaleString()}</span>
+                        </div>
+                        
+                        ${(inv.discAmt > 0) ? `
+                        <div class="flex justify-between text-sm text-rose-500">
+                            <span class="font-bold uppercase text-[10px]">Discount (${inv.discP}%)</span>
+                            <span class="font-bold">-$${inv.discAmt.toLocaleString()}</span>
+                        </div>
+                        ` : ''}
+
+                        ${(inv.taxAmt > 0) ? `
+                        <div class="flex justify-between text-sm">
+                            <span class="font-bold text-slate-400 uppercase text-[10px]">${inv.useGst ? 'GST' : 'Tax'} (${inv.taxP}%)</span>
+                            <span class="font-bold text-slate-800">+$${inv.taxAmt.toLocaleString()}</span>
+                        </div>
+                        ` : ''}
+
+                        <div class="flex justify-between items-center pt-3 border-t border-slate-900">
+                            <span class="font-black text-slate-900 uppercase text-xs">Total Amount</span>
+                            <span class="text-2xl font-black text-blue-600">$${inv.amount.toLocaleString()}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('printable-content').innerHTML = html;
+            document.getElementById('modal-overlay').classList.remove('hidden');
+            document.getElementById('modal-preview').classList.remove('hidden');
+        }
+
+        function exportInvoiceExcel() {
+            if (!activeInvoiceForPreview) return;
+            const inv = activeInvoiceForPreview;
+            let csv = `Invoice ID,${inv.id}\nClient,${inv.client}\nDate,${inv.date}\nStatus,${inv.status}\n\nDescription,Quantity,Rate,Total\n`;
+            inv.items.forEach(i => csv += `"${i.desc}",${i.qty},${i.rate},${i.qty * i.rate}\n`);
+            csv += `\nSubtotal,,$${inv.subtotal}\n`;
+            csv += `Discounts,,$${inv.discAmt}\n`;
+            csv += `Tax,,$${inv.taxAmt}\n`;
+            csv += `Final Total,,$${inv.amount.toFixed(2)}\n`;
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.setAttribute("href", URL.createObjectURL(blob));
+            link.setAttribute("download", `Invoice_${inv.id}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function addCompany() {
+            const val = document.getElementById('input-new-company').value.trim();
+            if (val && !companies.includes(val)) { companies.push(val); document.getElementById('input-new-company').value = ''; render(); }
+        }
+        function deleteCompany(name) { companies = companies.filter(c => c !== name); render(); }
+        function addStockItem() {
+            const name = document.getElementById('input-item-name').value.trim();
+            const rate = parseFloat(document.getElementById('input-item-rate').value);
+            if (name && !isNaN(rate)) { stockItems.push({ name, rate }); document.getElementById('input-item-name').value = ''; document.getElementById('input-item-rate').value = ''; render(); }
+        }
+        function deleteStockItem(name) { stockItems = stockItems.filter(s => s.name !== name); render(); }
+        function deleteInvoice(id) { invoices = invoices.filter(i => i.id !== id); render(); }
+        function toggleStatus(id) {
+            const idx = invoices.findIndex(i => i.id === id);
+            if (idx !== -1) { invoices[idx].status = invoices[idx].status === 'paid' ? 'unpaid' : 'paid'; render(); }
+        }
+
+        window.onload = () => { switchTab('dashboard'); };
+    </script>
+</body>
+</html>
